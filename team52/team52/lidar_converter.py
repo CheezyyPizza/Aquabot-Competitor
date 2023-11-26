@@ -82,10 +82,10 @@ class GPSConverter(Node):
         self.request = ConvertToGPS.Request()
 
     def send_request(self, point):
-        self.request.coord_cart = point
+        self.request.cart = point
         self.future = self.cli.call_async(self.request)
         rclpy.spin_until_future_complete(self, self.future)
-        return self.future.result().coord_gps
+        return self.future.result().gps
 
 #>===[ NODE ]===<#
 class LidarConverter(Node):
@@ -209,12 +209,12 @@ class LidarConverter(Node):
         # > Publish boats < #
         boats_msg = Obstacles()
         boats_msg.size = len(boats)
-        boats_msg.points = boats
+        boats_msg.points_list = boats
         self.boat_publisher.publish(boats_msg)
         # > Publish obstacles < #
         obstacles_msg = Obstacles()
         obstacles_msg.size = len(obstacles)//2
-        obstacles_msg.gps = obstacles
+        obstacles_msg.gps_list = obstacles
         self.obs_publisher.publish(obstacles_msg)
 
 def main(args=None):
