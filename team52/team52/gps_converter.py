@@ -1,6 +1,7 @@
 import math
 import rclpy
-from rclpy.node import Node
+from rclpy.node import
+ Node
 
 from sensor_msgs.msg import NavSatFix
 from team52_interfaces.srv import ConvertToGPS
@@ -17,6 +18,7 @@ class Coordonnees(Node):
         self.subs = self.create_subscription(NavSatFix, '/wamv/sensors/gps/gps/fix', self.set_coord, 10)
 
         self.srv = self.create_service(ConvertToGPS, '/team52/convert_to_gps', self.deplacer_coordonnees)
+        self.srv = self.create_service(ConvertToGPS, '/team52/convert_to_gps', self.deplacer_coordonnees_angle)
         self.srv = self.create_service(ConvertToCart, '/team52/convert_to_cart', self.calculer_ecart)
         self.get_logger().info("Node ready")
 
@@ -32,9 +34,17 @@ class Coordonnees(Node):
         response.coord_gps.latitude = self.latitude + math.degrees(y_rad)
         response.coord_gps.longitude = self.longitude + math.degrees(x_rad / math.cos(math.radians(self.latitude)))
         response.coord_gps.altitude = self.altitude + request.coord_cart.z
-        
         return response
 
+    def deplacer_coordonnees_angle(self, request, response):
+        angle_rotation = request.direction
+        delta_x = request.distance * math.cos(math.radians(angle_rotation))
+        delta_y = request.distance * math.sin(math.radians(angle_rotation))
+        response.coord_gps.latitude = self.latitude + delta_x
+        response.coord_gps.longitude = self.longitude + delta_y
+        response.coord_gps.altitude = self.altitude
+        return response
+    
     def calculer_ecart(self, request, response):
         RT = 6371000
         x_rad = math.radians(request.coord_gps.longitude - self.longitude)*math.cos(math.radians(self.latitude))
