@@ -37,6 +37,7 @@ class Filter(Node):
         )
 
     def get_positions(self, ais_list: PoseArray):
+        # Get positions #
         new_positions = []
         for ais in ais_list:
             coord = NavSatFix()
@@ -45,12 +46,17 @@ class Filter(Node):
             coord.altitude = ais.position.z
             new_positions.append(coord)
         self.allies_positions = new_positions
+        # Publish obstacle #
+        pass
 
-    def is_in_circle(self, coord: Point, range):
+
+    def get_distance_min(self, coord: NavSatFix):
         pass
     
     def compare(self, lidar_coord: Obstacles):
-        pass
+        for ais in lidar_coord.gps:
+            if self.get_distance_min(ais) > 10:
+                pass
         
 
 def main():

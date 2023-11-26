@@ -1,0 +1,3 @@
+sensor_msgs/NavSatFix coord_gps
+---
+geometry_msgs/Point coord_cart
