@@ -24,6 +24,7 @@ setup(
             'lidar_converter = team52.lidar_converter:main',
             'gps_converter = team52.gps_converter:main',
             'allies_detection = team52.allies_detection:main',
+            'beacon_converter = team52.beacon_converter:main',
             'pid = team52.Pid:main',
             'coord = team52.coord_pub_debug:main',
         ],
