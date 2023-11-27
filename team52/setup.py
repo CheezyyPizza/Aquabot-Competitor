@@ -25,7 +25,7 @@ setup(
             'gps_converter = team52.gps_converter:main',
             'allies_detection = team52.allies_detection:main',
             'pid = team52.pid:main',
-            'coord = team52.coord_publisher:main'
+            'coord = team52.coord_publisher:main',
         ],
     },
 )
