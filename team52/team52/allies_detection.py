@@ -55,7 +55,7 @@ class Filter(Node):
 
         # > Subscribers < #
         # --- AIS --- #
-        self.allies_cart = []
+        self.allies_ais = []
         self.ais_subscriber = self.create_subscription(
             PoseArray,
             "/wamv/ais_sensor/allies_positions",
