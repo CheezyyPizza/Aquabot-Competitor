@@ -23,7 +23,9 @@ setup(
             'node = team52.node:main',
             'lidar_converter = team52.lidar_converter:main',
             'gps_converter = team52.gps_converter:main',
-            'allies_detection = team52.allies_detection:main'
+            'allies_detection = team52.allies_detection:main',
+            'pid = team52.pid:main',
+            'coord = team52.coord_publisher:main'
         ],
     },
 )
