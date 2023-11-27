@@ -46,7 +46,8 @@ def get_point(data, offset):
 def quaternion_to_tilts(qw, qx, qy, qz):
     roll = math.tan(math.atan2(2 * (qw * qx + qy * qz), 1 - 2 * (qx**2 + qy**2)))
     pitch = 2 * (qw * qy - qz * qx)
-    return [pitch, roll]
+    yaw = math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy**2 + qz**2))
+    return [pitch, roll, yaw]
 
 #>===[ AVERAGE POINT ]===<#
 def average_point(point_list):
@@ -111,8 +112,8 @@ class LidarConverter(Node):
         )
 
         # Publishers #
-        self.obs_publisher = self.create_publisher(Obstacles, "/team52/obstacles", 10)
         self.boat_publisher = self.create_publisher(Obstacles, "/team52/boats", 10)
+        self.obs_publisher = self.create_publisher(Obstacles, "/team52/obstacles", 10)
 
         # Service #
         self.client_gps_converter = GPSConverter()
@@ -125,6 +126,15 @@ class LidarConverter(Node):
         y = data._orientation.y
         z = data._orientation.z
         self.tilts = quaternion_to_tilts(w,x,y,z)
+
+    # --- Correct the 2D position --- #
+    def horizontal_correction(self, point):
+        # Radius & Angle #
+        radius = math.sqrt(point[0]**2+point[1]**2)
+        angle = math.atan2(point[1], point[0])
+        # New point #
+        point[0] = radius*math.cos(angle+self.tilts[2])
+        point[1] = radius*math.sin(angle+self.tilts[2])
 
     # --- Correct the height --- #
     def vertical_correction(self, point):
@@ -142,6 +152,7 @@ class LidarConverter(Node):
                 self.vertical_correction(point)
                 # If match the 'object' description -> add to the list #
                 if 15 < math.sqrt(point[0]**2+point[1]**2) < 600 and point[2] > -0.25:
+                    self.horizontal_correction(point)
                     object_point.append(point)
                     object_point[-1].append([0,0])
         if len(object_point) == 0:
@@ -173,7 +184,7 @@ class LidarConverter(Node):
             # Get max height #
             group.sort(key=lambda x: x[2])
             # If too short -> Boat #
-            if group[-1][2] < 0.4:
+            if group[-1][2] < 0.6:
                 point = average_point(group)
                 if math.sqrt(point.x**2+point.y**2) < 100:
                     boats.append(self.client_gps_converter.send_request(point))

@@ -69,7 +69,6 @@ class Converter(Node):
         # New point #
         point[0] = radius*math.cos(angle+self.yaw)
         point[1] = radius*math.sin(angle+self.yaw)
-        self.get_logger().info("Node ready")
     
     # --- Set tilts --- #
     def orientation(self, data: Imu):
