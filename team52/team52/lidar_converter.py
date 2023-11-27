@@ -44,10 +44,9 @@ def get_point(data, offset):
 
 #>===[ QUATERNION TO TILTS ]===<#
 def quaternion_to_tilts(qw, qx, qy, qz):
-    yaw = math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy**2 + qz**2))
     roll = math.tan(math.atan2(2 * (qw * qx + qy * qz), 1 - 2 * (qx**2 + qy**2)))
     pitch = 2 * (qw * qy - qz * qx)
-    return [pitch, roll, yaw]
+    return [pitch, roll]
 
 #>===[ AVERAGE POINT ]===<#
 def average_point(point_list):
@@ -113,7 +112,7 @@ class LidarConverter(Node):
 
         # Publishers #
         self.obs_publisher = self.create_publisher(Obstacles, "/team52/obstacles", 10)
-        self.boat_publisher = self.create_publisher(Obstacles, "/team52/boat", 10)
+        self.boat_publisher = self.create_publisher(Obstacles, "/team52/boats", 10)
 
         # Service #
         self.client_gps_converter = GPSConverter()
@@ -131,18 +130,8 @@ class LidarConverter(Node):
     def vertical_correction(self, point):
         point[2] -= (point[0]*self.tilts[0]) - (point[1]*self.tilts[1])
 
-    # --- Correct the 2D position --- #
-    def horizontal_correction(self, point):
-        # Radius & Angle #
-        radius = math.sqrt(point[0]**2+point[1]**2)
-        angle = math.atan2(point[1], point[0])
-        # New point #
-        point[0] = radius*math.cos(angle+self.tilts[2])
-        point[1] = radius*math.sin(angle+self.tilts[2])
-
     def converter(self, point_mat: PointCloud2):
         # > Processing points < #
-        self.get_logger().info("Reading points")
         object_point = []
         # Selecting only 4 layers #
         for h in range(6,10):
@@ -152,8 +141,7 @@ class LidarConverter(Node):
                 point = get_point(point_mat.data, offset)
                 self.vertical_correction(point)
                 # If match the 'object' description -> add to the list #
-                if 5 < abs(point[0]) < 600 and 5 < abs(point[1]) < 600 and point[2] > -0.6:
-                    self.horizontal_correction(point)
+                if 15 < math.sqrt(point[0]**2+point[1]**2) < 600 and point[2] > -0.25:
                     object_point.append(point)
                     object_point[-1].append([0,0])
         if len(object_point) == 0:
@@ -185,8 +173,10 @@ class LidarConverter(Node):
             # Get max height #
             group.sort(key=lambda x: x[2])
             # If too short -> Boat #
-            if group[-1][2] < 0.6:
-                boats.append(average_point(group))
+            if group[-1][2] < 0.4:
+                point = average_point(group)
+                if math.sqrt(point.x**2+point.y**2) < 100:
+                    boats.append(self.client_gps_converter.send_request(point))
             # Else -> Obstacle #
             else:
                 max_distance = [0,0,0]
@@ -209,7 +199,7 @@ class LidarConverter(Node):
         # > Publish boats < #
         boats_msg = Obstacles()
         boats_msg.size = len(boats)
-        boats_msg.points_list = boats
+        boats_msg.gps_list = boats
         self.boat_publisher.publish(boats_msg)
         # > Publish obstacles < #
         obstacles_msg = Obstacles()
