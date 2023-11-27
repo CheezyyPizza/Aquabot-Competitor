@@ -18,9 +18,9 @@ class CoordPublisher(Node):
         super().__init__('coord_publisher')
 
         self.msg = Point()
-        self.msg.x.data = -4.97
-        self.msg.y.data = 48.04631299831134
-        self.msg.z.data = 0.0
+        self.msg.x = -4.97
+        self.msg.y = 48.04631299831134
+        self.msg.z = 0.0
 
         self.publisher = self.create_publisher(Point, 'team52/waypoint', 10)
         wait_for_change = 40
@@ -32,8 +32,8 @@ class CoordPublisher(Node):
         self.run()
 
     def change_callback(self):
-        self.msg.x.data = -4.9780
-        self.msg.y.data = 48.04631299831134
+        self.msg.x = -4.9780
+        self.msg.y = 48.04631299831134
         self.get_logger().info("changed coord")
 
     def timer_callback(self):
@@ -41,6 +41,7 @@ class CoordPublisher(Node):
         self.i += 1
 
     def run(self):
+        self.get_logger().info("running")
         while rclpy.ok():
 
             rclpy.spin_once(self)

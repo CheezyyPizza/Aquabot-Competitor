@@ -103,23 +103,9 @@ class PID(Node):
         
     def objectif_gatherer(self, msg):
         # Si les valeurs du messages sont significativement différentes des valeurs actuelles
-        if abs(self.coord_objectif[0] - msg.x.data) > self.eps_obj or abs(self.coord_objectif[1] - msg.y.data) > self.eps_obj:
+        if abs(self.coord_objectif[0] - msg.x) > self.eps_obj or abs(self.coord_objectif[1] - msg.y) > self.eps_obj:
             # On change l'objectif
-            self.coord_objectif = (msg.x.data, msg.y.data)
-
-    # fonctions temporaires avant de savoir comment fonctionnent les types msg
-    def objectif_gatherer_x(self, msg):
-        # Si les valeurs du messages sont significativement différentes des valeurs actuelles
-        if abs(self.coord_objectif[0] - msg.data) > self.eps_obj:
-            # On change l'objectif
-            self.coord_objectif = (msg.data, self.coord_objectif[1])
-    
-    def objectif_gatherer_y(self, msg):
-        # Si les valeurs du messages sont significativement différentes des valeurs actuelles
-        if abs(self.coord_objectif[1] - msg.data) > self.eps_obj:
-            # On change l'objectif
-            self.coord_objectif = (self.coord_objectif[0], msg.data)
-
+            self.coord_objectif = (msg.x, msg.y)
 
     # fin des fonctions pour les subscribers
 
@@ -130,7 +116,6 @@ class PID(Node):
         obj = vectsub(self.coord_objectif, self.pos)
         # On calcul l'angle qu'il faut pour pointer vers cet objectif
         obj_angle = get_angle(obj, (-1.0, 0.0))
-        print(obj_angle)
         # On calcul l'angle qu'il y a entre l'objectif et l'orientation du bateau
         angle = self.orientation - obj_angle
 
