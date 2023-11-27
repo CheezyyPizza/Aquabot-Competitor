@@ -15,6 +15,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Obstacles.msg"
   "srv/ConvertToGPS.srv"
   "srv/ConvertToCart.srv"
+  "srv/BeaconToGPS.srv"
   DEPENDENCIES geometry_msgs
   DEPENDENCIES sensor_msgs
 )

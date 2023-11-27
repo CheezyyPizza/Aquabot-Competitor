@@ -8,6 +8,7 @@ from geometry_msgs.msg import Point
 from sensor_msgs.msg import NavSatFix
 from team52_interfaces.msg import Obstacles
 from team52_interfaces.srv import ConvertToCart
+from team52_interfaces.srv import BeaconToGPS
 
 #>===[ FUNCTIONS ]===<#
 
@@ -21,38 +22,56 @@ class GPSConverter(Node):
     # --- Initialization --- #
     def __init__(self):
         super().__init__('lidar_converter_gps_client')
-        self.cli = self.create_client(ConvertToCart, '/team52/convert_to_cart')
-        while not self.cli.wait_for_service(timeout_sec=1.0):
+        # To cart #
+        self.cli_cart = self.create_client(ConvertToCart, '/team52/convert_to_cart')
+        while not self.cli_cart.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('service not available, waiting again...')
-        self.request = ConvertToCart.Request()
+        self.request_gps = ConvertToCart.Request()
+        # Beacon To GPS #
+        self.cli_btogps = self.create_client(BeaconToGPS, '/team52/beacon_to_gps')
+        while not self.cli_btogps.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+        self.request_beacon = BeaconToGPS.Request()
 
-    def send_request(self, ais: NavSatFix):
-        self.request.gps = ais
-        self.future = self.cli.call_async(self.request)
-        rclpy.spin_until_future_complete(self, self.future)
-        return self.future.result().cart
+    def send_request_tocart(self, ais: NavSatFix):
+        self.request_gps.gps = ais
+        self.future_cart = self.cli_cart.call_async(self.request_gps)
+        rclpy.spin_until_future_complete(self, self.future_cart)
+        return self.future_cart.result().cart
 
+    def send_request_beacontogps(self, distance, angle):
+        self.request_beacon.distance = distance
+        self.request_beacon.angle = angle
+        self.future_gps = self.cli_btogps.call_async(self.request_beacon)
+        rclpy.spin_until_future_complete(self, self.future_gps)
+        return self.future_gps.result().gps
 
 class Filter(Node):
 
     def __init__(self):
         super().__init__("allies_detection")
         self.origin = Point()
+        self.beacon = NavSatFix()
 
         # > Subscribers < #
         # --- AIS --- #
-        self.allies_positions = []
-        self.allies_distances = []
+        self.allies_cart = []
         self.ais_subscriber = self.create_subscription(
             PoseArray,
             "/wamv/ais_sensor/allies_positions",
             self.get_positions,
             10
         )
+        self.beacon_subscriber = self.create_subscription(
+            NavSatFix,
+            "/team52/beacon",
+            self.get_beacon,
+            10
+        )
         # --- Lidar --- #
         self.lidar_subscriber = self.create_subscription(
             Obstacles,
-            "/team52/obstacles",
+            "/team52/boats",
             self.compare,
             10
         )
@@ -63,15 +82,21 @@ class Filter(Node):
             '/team52/lidar_enemy',
             10
         )
+        self.boat_obs_publisher = self.create_publisher(
+            Obstacles,
+            '/team52/boat_obstacles',
+            10
+        )
 
         # Service #
         self.client_gps_converter = GPSConverter()
         self.get_logger().info("Node ready")
 
+    def get_beacon(self, gps: NavSatFix):
+        self.beacon_cart = self.client_gps_converter.send_request_tocart(gps)
 
     def get_positions(self, ais_list: PoseArray):
         # Get positions #
-        new_positions = []
         new_distances = []
         obstacles = []
         for ais in ais_list.poses:
@@ -79,37 +104,50 @@ class Filter(Node):
             gps.longitude = ais.position.y
             gps.latitude = ais.position.x
             gps.altitude = ais.position.z
-            new_positions.append(gps)
-            new_distances.append(self.client_gps_converter.send_request(gps))
-            # Publish obstacle #
+            new_distances.append(self.client_gps_converter.send_request_tocart(gps))
+            # Set obstacles #
             margin = 30
             dist = get_distance(self.origin, new_distances[-1])
             angle = math.atan2(new_distances[-1].y, new_distances[-1].x)
-            delta_angle = math.acos((dist-margin)/dist)
-            new_point = Point()
-            new_point.z = new_distances[-1].z
-            new_point.x = dist*math.cos(angle+delta_angle)
-            new_point.y = dist*math.sin(angle+delta_angle)
-            obstacles.append(new_point)
-            new_point.x = dist*math.cos(angle-delta_angle)
-            new_point.y = dist*math.sin(angle-delta_angle)
-            obstacles.append(new_point)
-        self.allies_distances = new_distances
+            delta_angle = math.acos((dist-margin/2)/dist)
+            print(angle, delta_angle, dist)
+            # Set new points #
+            obstacles.append(self.client_gps_converter.send_request_beacontogps(dist, angle+delta_angle))
+            obstacles.append(self.client_gps_converter.send_request_beacontogps(dist, angle-delta_angle))
+        # > Beacon < #
+        new_distances.append(self.beacon_cart)
+        # Set obstacles #
+        margin = 5
+        dist = get_distance(self.origin, new_distances[-1])
+        angle = math.atan2(new_distances[-1].y, new_distances[-1].x)
+        delta_angle = math.acos((dist-margin/2)/dist)
+        # Set new points #
+        obstacles.append(self.client_gps_converter.send_request_beacontogps(dist, angle+delta_angle))
+        obstacles.append(self.client_gps_converter.send_request_beacontogps(dist, angle-delta_angle))
+        # > Process results < #
+        self.allies_cart = new_distances
+        obstacles_msg = Obstacles()
+        obstacles_msg.size = len(obstacles)//2
+        obstacles_msg.gps_list = obstacles
+        self.boat_obs_publisher.publish(obstacles_msg)
+        print(self.allies_cart)
+        for gps in obstacles:
+            print(self.client_gps_converter.send_request_tocart(gps))
 
     def get_distance_min(self, gps: NavSatFix):
-        cart = self.client_gps_converter.send_request(gps)
-        distance_min = 720000
-        for d in self.allies_distances:
-            distance_min = min(distance_min, get_distance(d, cart))
-        print(self.allies_distances)
+        cart = self.client_gps_converter.send_request_tocart(gps)
+        distance_min = get_distance(self.beacon_cart, cart)
+        for ally_cart in self.allies_cart:
+            distance_min = min(distance_min, get_distance(ally_cart, cart))
         print(distance_min)
         return distance_min
     
     def compare(self, lidar_coord: Obstacles):
         for ais in lidar_coord.gps_list:
-            if self.get_distance_min(ais) > 100:
+            if self.get_distance_min(ais) > 25:
                 self.lidar_enemy_publisher.publish(ais)
                 return
+        
         
 
 def main():
