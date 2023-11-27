@@ -141,7 +141,7 @@ class LidarConverter(Node):
                 point = get_point(point_mat.data, offset)
                 self.vertical_correction(point)
                 # If match the 'object' description -> add to the list #
-                if 5 < abs(point[0]) < 600 and 5 < abs(point[1]) < 600 and point[2] > -0.6:
+                if 15 < math.sqrt(point[0]**2+point[1]**2) < 600 and point[2] > -0.25:
                     object_point.append(point)
                     object_point[-1].append([0,0])
         if len(object_point) == 0:
@@ -173,8 +173,10 @@ class LidarConverter(Node):
             # Get max height #
             group.sort(key=lambda x: x[2])
             # If too short -> Boat #
-            if group[-1][2] < 0.6:
-                boats.append(self.client_gps_converter.send_request(average_point(group)))
+            if group[-1][2] < 0.4:
+                point = average_point(group)
+                if math.sqrt(point.x**2+point.y**2) < 100:
+                    boats.append(self.client_gps_converter.send_request(point))
             # Else -> Obstacle #
             else:
                 max_distance = [0,0,0]

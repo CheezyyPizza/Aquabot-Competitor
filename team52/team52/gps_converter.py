@@ -22,6 +22,7 @@ class Coordonnees(Node):
         self.srv_cg = self.create_service(ConvertToGPS, '/team52/convert_to_gps', self.deplacer_coordonnees)
         self.srv_bg = self.create_service(BeaconToGPS, '/team52/beacon_to_gps', self.deplacer_coordonnees_angle)
         self.srv_gc = self.create_service(ConvertToCart, '/team52/convert_to_cart', self.calculer_ecart)
+        self.get_logger().info("Node ready")
 
     def set_coord(self, data: NavSatFix):
         self.longitude = data.longitude
