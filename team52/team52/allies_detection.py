@@ -51,7 +51,7 @@ class Filter(Node):
     def __init__(self):
         super().__init__("allies_detection")
         self.origin = Point()
-        self.beacon_cart = Point()
+        self.beacon_ais = Point()
 
         # > Subscribers < #
         # --- AIS --- #
@@ -93,33 +93,35 @@ class Filter(Node):
         self.get_logger().info("Node ready")
 
     def get_beacon(self, gps: NavSatFix):
-        self.beacon_cart = self.client_gps_converter.send_request_tocart(gps)
+        self.beacon_ais = gps
 
     def get_positions(self, ais_list: PoseArray):
         # Get positions #
-        new_distances = []
+        new_ais = []
         obstacles = []
         for ais in ais_list.poses:
             gps = NavSatFix()
             gps.longitude = ais.position.y
             gps.latitude = ais.position.x
             gps.altitude = ais.position.z
-            new_distances.append(self.client_gps_converter.send_request_tocart(gps))
+            new_ais.append(gps)
             # Set obstacles #
-            margin = 30
-            dist = get_distance(self.origin, new_distances[-1])
-            angle = math.atan2(new_distances[-1].y, new_distances[-1].x)
+            cart = self.client_gps_converter.send_request_tocart(gps)
+            margin = 10
+            dist = get_distance(self.origin, cart)
+            angle = math.atan2(cart.y, cart.x)
             delta_angle = 2*math.asin(margin/(2*dist))
             # Set new points #
             obstacles.append(self.client_gps_converter.send_request_beacontogps(dist, angle+delta_angle))
             obstacles.append(self.client_gps_converter.send_request_beacontogps(dist, angle-delta_angle))
         # > Beacon < #
-        new_distances.append(self.beacon_cart)
+        new_ais.append(self.beacon_ais)
         # Set obstacles #
         try:
+            cart = self.client_gps_converter.send_request_tocart(self.beacon_ais)
             margin = 5
-            dist = get_distance(self.origin, new_distances[-1])
-            angle = math.atan2(new_distances[-1].y, new_distances[-1].x)
+            dist = get_distance(self.origin, cart)
+            angle = math.atan2(cart.y, cart.x)
             delta_angle = 2*math.asin(margin/(2*dist))
             # Set new points #
             obstacles.append(self.client_gps_converter.send_request_beacontogps(dist, angle+delta_angle))
@@ -127,7 +129,7 @@ class Filter(Node):
         except:
             pass
         # > Process results < #
-        self.allies_cart = new_distances
+        self.allies_ais = new_ais
         obstacles_msg = Obstacles()
         obstacles_msg.size = len(obstacles)//2
         obstacles_msg.gps_list = obstacles
@@ -135,15 +137,16 @@ class Filter(Node):
 
     def get_distance_min(self, gps: NavSatFix):
         cart = self.client_gps_converter.send_request_tocart(gps)
-        distance_min = get_distance(self.beacon_cart, cart)
-        for ally_cart in self.allies_cart:
+        distance_min = 600
+        for ally_ais in self.allies_ais:
+            ally_cart = self.client_gps_converter.send_request_tocart(ally_ais)
             distance_min = min(distance_min, get_distance(ally_cart, cart))
         return distance_min
     
     def compare(self, lidar_coord: Obstacles):
         for ais in lidar_coord.gps_list:
             distance = self.get_distance_min(ais)
-            if distance > 100:
+            if distance > 50:
                 print(distance, self.client_gps_converter.send_request_tocart(ais))
                 self.lidar_enemy_publisher.publish(ais)
                 return
