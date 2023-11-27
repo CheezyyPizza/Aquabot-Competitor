@@ -186,7 +186,7 @@ class LidarConverter(Node):
             # If too short -> Boat #
             if group[-1][2] < 0.6:
                 point = average_point(group)
-                if math.sqrt(point.x**2+point.y**2) < 100:
+                if math.sqrt(point.x**2+point.y**2) < 150:
                     boats.append(self.client_gps_converter.send_request(point))
             # Else -> Obstacle #
             else:

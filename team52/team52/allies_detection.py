@@ -97,7 +97,6 @@ class Filter(Node):
 
     def get_positions(self, ais_list: PoseArray):
         # Get positions #
-        print("Positions")
         new_ais = []
         obstacles = []
         for ais in ais_list.poses:
@@ -108,7 +107,6 @@ class Filter(Node):
             new_ais.append(gps)
             # Set obstacles #
             cart = self.client_gps_converter.send_request_tocart(gps)
-            print(cart)
             margin = 10
             dist = get_distance(self.origin, cart)
             angle = math.atan2(cart.y, cart.x)
@@ -148,9 +146,7 @@ class Filter(Node):
     def compare(self, lidar_coord: Obstacles):
         for ais in lidar_coord.gps_list:
             distance = self.get_distance_min(ais)
-            if distance > 20:
-                print("Enemy")
-                print(distance, self.client_gps_converter.send_request_tocart(ais))
+            if distance > 10:
                 self.lidar_enemy_publisher.publish(ais)
                 return
         
