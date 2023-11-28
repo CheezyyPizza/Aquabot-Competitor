@@ -25,22 +25,12 @@ def vectsub(v, u):
 
 # renvoie 1 si v est en haut de u, -1 si en bas
 def get_angle(v):
+    if norm(v) == 0:
+        return 0
     sign = 1
     if v[1] < 0:
         sign = -1
     return sign*acos(v[0]/norm(v))
-
-def get_side(v, u):
-    if get_angle(v)-get_angle(u) > 0:
-        return 1
-    return -1
-
-# renvoie l'angle entre le vecteur v et le vecteur u (de -pi à pi)    
-def get_angle_diff(v, u):
-    if norm(v) == 0 or norm(u) == 0:
-        return 0
-    else :
-        return get_side(v, u) * acos( dotprod(v, u) / (norm(v) * norm(u)) )
 
 class PID(Node):
     def __init__(self):
@@ -65,8 +55,8 @@ class PID(Node):
         self.pos            = (0.0, 0.0)                          # Vecteur de la position actuelle
         self.orientation    = 0.0                                 # Vecteur de l'orientation du bateau
         self.coord_objectif = (0.0, 0.0)                          # Vecteur de la position de l'objectif
-        self.eps_obj        = 0.00000001                          # Valeur petite pour laquelle on considère que les coordonnées d'objectif ont changées
-        self.eps_arrived    = 0.000025                            # Valeur petite pour laquelle on condidère qu'on est assez proche de l'arrivé pour être arrivé (environ 5 mètre à Paris)
+        self.eps_obj        = 0                                   # Valeur petite pour laquelle on considère que les coordonnées d'objectif ont changées
+        self.eps_arrived    = 0.0002                              # Valeur petite pour laquelle on condidère qu'on est assez proche de l'arrivé pour être arrivé (environ 5 mètre à Paris)
                                   
         self.olderr         = 0.0                                 # Valeur de l'erreur au pas précédent, pour le calcul de la dérivée
         self.integ_err      = 0.0                                 # Valeur de l'erreur d'integrale
@@ -120,7 +110,7 @@ class PID(Node):
         # On récupère le vecteur qui pointe du bateau vers l'objectif
         obj = vectsub(self.coord_objectif, self.pos)
         # On calcul l'angle qu'il faut pour pointer vers cet objectif
-        obj_angle = get_angle_diff(obj, (1.0, 0.0))
+        obj_angle = get_angle(obj)
         # On calcul l'angle qu'il y a entre l'objectif et l'orientation du bateau
         angle = obj_angle - self.orientation
 
@@ -191,9 +181,8 @@ class PID(Node):
                     speed = 0.0
                 else:
                     speed = 12000.0
-        
-                # On récupère l'angle du gouvernail
-                angle = self.new_get_steering_angle()
+                    # On récupère l'angle du gouvernail
+                    angle = self.new_get_steering_angle()
 
                 # On borne l'angle possible
                 if angle < -turn_limit:

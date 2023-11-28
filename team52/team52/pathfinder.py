@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 
 from sensor_msgs.msg import NavSatFix
-from team52_interfaces.msg import Obstacles
+from geometry_msgs.msg import PoseArray
 
 class PathFinder(Node):
 
@@ -10,10 +10,10 @@ class PathFinder(Node):
         super().__init__("path_finder")
 
         # > Subscription < #
-        self.beacon_subs = self.create_subscription(
-            Obstacles,
-            '/team52/boat_obstacles',
-            self.get_beacon,
+        self.obj_subs = self.create_subscription(
+            PoseArray,
+            "/wamv/ais_sensor/allies_positions",
+            self.get_position,
             10
         )
 
@@ -24,8 +24,12 @@ class PathFinder(Node):
             10
         )
 
-    def get_beacon(self, obstacle):
-        self.waypont_pubs.publish(obstacle.gps_list[2])
+    def get_position(self, data):
+        gps = NavSatFix()
+        gps.longitude = data.poses[1].position.y
+        gps.latitude = data.poses[1].position.x
+        gps.altitude = data.poses[1].position.z
+        self.waypont_pubs.publish(gps)
 
 
 def main():
