@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 
-from math import sqrt, acos, pi, atan2
+from math import sqrt, acos, pi, atan2, degrees
 import matplotlib.pyplot as plt
 
 from sensor_msgs.msg import NavSatFix, Imu
@@ -23,15 +23,20 @@ def dotprod(v, u):
 def vectsub(v, u):
     return(v[0] - u[0], v[1] - u[1])
 
-# renvoie 1 si v est à gauche de u, -1 si à droite
+# renvoie 1 si v est en haut de u, -1 si en bas
+def get_angle(v):
+    sign = 1
+    if v[1] < 0:
+        sign = -1
+    return sign*acos(v[0]/norm(v))
+
 def get_side(v, u):
-    dot = u[0] * (-v[1]) + u[1] * v[0]
-    if dot > 0:
+    if get_angle(v)-get_angle(u) > 0:
         return 1
-    else:
-        return -1
+    return -1
+
 # renvoie l'angle entre le vecteur v et le vecteur u (de -pi à pi)    
-def get_angle(v, u):
+def get_angle_diff(v, u):
     if norm(v) == 0 or norm(u) == 0:
         return 0
     else :
@@ -61,7 +66,7 @@ class PID(Node):
         self.orientation    = 0.0                                 # Vecteur de l'orientation du bateau
         self.coord_objectif = (0.0, 0.0)                          # Vecteur de la position de l'objectif
         self.eps_obj        = 0.00000001                          # Valeur petite pour laquelle on considère que les coordonnées d'objectif ont changées
-        self.eps_arrived    = 0.0001                              # Valeur petite pour laquelle on condidère qu'on est assez proche de l'arrivé pour être arrivé
+        self.eps_arrived    = 0.000025                            # Valeur petite pour laquelle on condidère qu'on est assez proche de l'arrivé pour être arrivé (environ 5 mètre à Paris)
                                   
         self.olderr         = 0.0                                 # Valeur de l'erreur au pas précédent, pour le calcul de la dérivée
         self.integ_err      = 0.0                                 # Valeur de l'erreur d'integrale
@@ -84,7 +89,7 @@ class PID(Node):
         self.imu = self.create_subscription(Imu, '/wamv/sensors/imu/imu/data', self.imu_gatherer, 10)
 
         # obtention de la position voulue
-        self.objectif = self.create_subscription(Point, 'team52/waypoint', self.objectif_gatherer, 10)
+        self.objectif = self.create_subscription(NavSatFix, 'team52/waypoint', self.objectif_gatherer, 10)
 
         # lancement de la fonction principale
         self.run()
@@ -99,13 +104,13 @@ class PID(Node):
 
     def imu_gatherer(self, msg):
         q = (msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w)
-        self.orientation = atan2(2 * (q[3] * q[2] + q[0] * q[1]), 1 - 2 * (q[0]**2 + q[3]**2))
+        self.orientation = atan2(2 * (q[3] * q[2] + q[0] * q[1]), 1 - 2 * (q[1]**2 + q[2]**2))
         
     def objectif_gatherer(self, msg):
         # Si les valeurs du messages sont significativement différentes des valeurs actuelles
-        if abs(self.coord_objectif[0] - msg.x) > self.eps_obj or abs(self.coord_objectif[1] - msg.y) > self.eps_obj:
+        if abs(self.coord_objectif[0] - msg.longitude) > self.eps_obj or abs(self.coord_objectif[1] - msg.latitude) > self.eps_obj:
             # On change l'objectif
-            self.coord_objectif = (msg.x, msg.y)
+            self.coord_objectif = (msg.longitude, msg.latitude)
 
     # fin des fonctions pour les subscribers
 
@@ -115,9 +120,9 @@ class PID(Node):
         # On récupère le vecteur qui pointe du bateau vers l'objectif
         obj = vectsub(self.coord_objectif, self.pos)
         # On calcul l'angle qu'il faut pour pointer vers cet objectif
-        obj_angle = get_angle(obj, (-1.0, 0.0))
+        obj_angle = get_angle_diff(obj, (1.0, 0.0))
         # On calcul l'angle qu'il y a entre l'objectif et l'orientation du bateau
-        angle = self.orientation - obj_angle
+        angle = obj_angle - self.orientation
 
         if angle > pi:
             angle -= 2 * pi
@@ -182,7 +187,7 @@ class PID(Node):
 
                 # Si on est suffisament proche de l'arrivé, on s'arrête
                 #print(norm(vectsub(self.pos, self.coord_objectif)))
-                if norm(vectsub(self.pos, self.coord_objectif)) < self.eps_arrived:
+                if norm(vectsub(self.pos, self.coord_objectif)) < self.eps_arrived or self.coord_objectif == (0,0):
                     speed = 0.0
                 else:
                     speed = 12000.0

@@ -27,6 +27,7 @@ setup(
             'beacon_converter = team52.beacon_converter:main',
             'pid = team52.Pid:main',
             'coord = team52.coord_pub_debug:main',
+            'pathfinder = team52.pathfinder:main',
         ],
     },
 )

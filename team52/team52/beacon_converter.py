@@ -60,15 +60,6 @@ class Converter(Node):
         # Service #
         self.client_gps_converter = GPSConverter()
         self.get_logger().info("Node ready")
-
-    # --- Correct the 2D position --- #
-    def horizontal_correction(self, point):
-        # Radius & Angle #
-        radius = math.sqrt(point[0]**2+point[1]**2)
-        angle = math.atan2(point[1], point[0])
-        # New point #
-        point[0] = radius*math.cos(angle+self.yaw)
-        point[1] = radius*math.sin(angle+self.yaw)
     
     # --- Set tilts --- #
     def orientation(self, data: Imu):
