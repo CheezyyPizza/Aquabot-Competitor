@@ -11,8 +11,8 @@ class PathFinder(Node):
 
         # > Subscription < #
         self.obj_subs = self.create_subscription(
-            PoseArray,
-            "/wamv/ais_sensor/allies_positions",
+            NavSatFix,
+            "/team52/objective",
             self.get_position,
             10
         )
@@ -24,11 +24,7 @@ class PathFinder(Node):
             10
         )
 
-    def get_position(self, data):
-        gps = NavSatFix()
-        gps.longitude = data.poses[1].position.y
-        gps.latitude = data.poses[1].position.x
-        gps.altitude = data.poses[1].position.z
+    def get_position(self, gps):
         self.waypont_pubs.publish(gps)
 
 

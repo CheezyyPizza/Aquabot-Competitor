@@ -28,6 +28,8 @@ setup(
             'pid = team52.Pid:main',
             'coord = team52.coord_pub_debug:main',
             'pathfinder = team52.pathfinder:main',
+            'brain = team52.brain:main',
+            'camera = team52.camera:main',
         ],
     },
 )

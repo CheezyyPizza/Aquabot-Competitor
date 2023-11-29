@@ -72,7 +72,7 @@ class Converter(Node):
     def get_beacon_gps(self, data):
         for category in data.params:
             if category.name == 'range':
-                distance = category.value.double_value
+                distance = category.value.double_value + 5
             if category.name == 'bearing':
                 angle = category.value.double_value
         beacon_gps = self.client_gps_converter.send_request(distance, angle+self.yaw)
