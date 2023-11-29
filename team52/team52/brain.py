@@ -34,7 +34,7 @@ class Brain(Node):
         # > Publishers < #
         self.objective_pubs = self.create_publisher(
             NavSatFix,
-            '/team52/objective',
+            '/team52/goal',
             10
         )
         self.alert_pubs = self.create_publisher(
