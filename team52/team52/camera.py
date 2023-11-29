@@ -18,7 +18,7 @@ class Camera(Node):
     
     def get_data(self, data: Image):
         print(">=====[ NEW DATA ]=====<")
-        tolerance = 10
+        tolerance = 5
         rref, gref, bref = 67,8,5
         mat = []
         lowest_red = [0,0]
