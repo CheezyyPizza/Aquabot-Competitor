@@ -7,7 +7,7 @@ from math import atan2
 
 from std_msgs.msg import Float64
 from sensor_msgs.msg import Imu
-from geometry_msgs.msg import Point
+from sensor_msgs.msg import NavSatFix
 
 
 # pos initiale du bateau: -4.9763157221789207    48.04631299831134
@@ -17,13 +17,12 @@ class CoordPublisher(Node):
     def __init__(self):
         super().__init__('coord_publisher')
 
-        self.msg = Point()
-        self.msg.x = -4.97
-        self.msg.y = 48.04631299831134
-        self.msg.z = 0.0
+        self.msg = NavSatFix()
+        self.msg.longitude = -4.97
+        self.msg.latitude = 48.04331299831134
 
-        self.publisher = self.create_publisher(Point, 'team52/goal', 10)
-        wait_for_change = 40
+        self.publisher = self.create_publisher(NavSatFix, 'team52/goal', 10)
+        wait_for_change = 30
         self.change_time = self.create_timer(wait_for_change, self.change_callback)
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
@@ -32,8 +31,8 @@ class CoordPublisher(Node):
         self.run()
 
     def change_callback(self):
-        self.msg.x = -4.9780
-        self.msg.y = 48.04631299831134
+        self.msg.longitude = -4.985
+        self.msg.latitude = 48.04551299831134
         self.get_logger().info("changed coord")
 
     def timer_callback(self):
