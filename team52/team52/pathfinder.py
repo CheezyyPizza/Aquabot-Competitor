@@ -215,8 +215,6 @@ class PathFinder(Node):
         waypoint_msg.latitude = self.waypoint[1]
         self.pub_waypoint.publish(waypoint_msg)
 
-    
-
     def run(self):
         try:
             while rclpy.ok():
@@ -228,7 +226,6 @@ class PathFinder(Node):
             fig, ax = plt.subplots()
             ax.scatter(self.waypoints_x, self.waypoints_y)
             plt.show()
-
 
         
 
