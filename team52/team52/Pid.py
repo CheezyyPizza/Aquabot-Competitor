@@ -177,7 +177,7 @@ class PID(Node):
 
                 # Si on est suffisament proche de l'arrivé, on s'arrête
                 #print(norm(vectsub(self.pos, self.coord_objectif)))
-                if norm(vectsub(self.pos, self.coord_objectif)) < self.eps_arrived or self.coord_objectif == (0,0):
+                if norm(vectsub(self.pos, self.coord_objectif)) < self.eps_arrived or self.coord_objectif == (0.0,0.0):
                     speed = 0.0
                 else:
                     speed = 12000.0
