@@ -189,8 +189,9 @@ class PID(Node):
         
         # L'angle du gouvernail est initialement à 0
         angle = 0.0
-        # L'angle max du gouvernail est de pi/4 à -pi/4
-        turn_limit = 0.78539816339
+
+        # L'angle max du gouvernail est de pi/4 et -pi/4
+        turn_limit = 0.78539816339/10
 
         try:
             self.get_logger().info("running")
