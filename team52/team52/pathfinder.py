@@ -237,7 +237,6 @@ class PathFinder(Node):
 
         # On ajoute les bateaux #
         self.obstacles = self.obstacles + self.allies
-
         if self.goal == (0.0, 0.0):
             ###self.get_logger().info("\nstop moving")
             # si on arrive ici c'est qu'on ne veut pas bouger #
@@ -251,7 +250,6 @@ class PathFinder(Node):
         self.waypoint, i = self.get_shortest_dist(self.goal)
         
         # Si il y a un obstacle -> on reregarde avec comme obj le waypoint (au cas ou un obstacle est sur la nouvelle traj) #
-        # ----->> possiblement ca qu'il kiffe pas, mais je me suis dit que c'est risquer d'assumer qu'il ne peut pas y avoir un obstacle sur la nouvelle traj
         if not self.no_obstacle :
             self.waypoint, i = self.get_shortest_dist(self.waypoint)
             self.no_obstacle = True

@@ -63,6 +63,9 @@ class PID(Node):
         self.d_err          = 0.0                                 # Valeur de l'erreur de dérivée
         self.time           = self.get_clock().now().nanoseconds  # Temps pour calculer les dérivés
         self.t              = 0                                   # Valeur pour l'affichage à la fin (debug)
+        self.i              = 0
+
+        self.reverse    = True
 
 
         # initialisation des publisher pour les mouvements du bateau
@@ -79,7 +82,7 @@ class PID(Node):
         self.imu = self.create_subscription(Imu, '/wamv/sensors/imu/imu/data', self.imu_gatherer, 10)
 
         # obtention de la position voulue
-        self.objectif = self.create_subscription(NavSatFix, 'team52/waypoint', self.objectif_gatherer, 10)
+        self.objectif = self.create_subscription(NavSatFix, '/team52/waypoint', self.objectif_gatherer, 10)
 
         # lancement de la fonction principale
         self.run()
@@ -95,6 +98,21 @@ class PID(Node):
     def imu_gatherer(self, msg):
         q = (msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w)
         self.orientation = atan2(2 * (q[3] * q[2] + q[0] * q[1]), 1 - 2 * (q[1]**2 + q[2]**2))
+
+        # On récupère le vecteur qui pointe du bateau vers l'objectif
+        obj = vectsub(self.coord_objectif, self.pos)
+        # On calcul l'angle qu'il faut pour pointer vers cet objectif
+        obj_angle = get_angle(obj)
+        angle = obj_angle - self.orientation
+        
+        # si l'objectif est derrière et à moins de 5m #
+        if (angle > pi/2 or angle < -pi/2) and norm(vectsub(self.coord_objectif, self.pos)) < 0.0002: 
+            # on recule #
+            self.reverse = True
+        else:
+            # sinon on avance #
+            self.reverse = False
+
         
     def objectif_gatherer(self, msg):
         # Si les valeurs du messages sont significativement différentes des valeurs actuelles
@@ -120,8 +138,8 @@ class PID(Node):
             angle += 2 * pi
             
         # On append pour l'affichage à la fin (debug)
-        self.angles.append(-angle)
-        self.times.append(self.t)
+        #self.angles.append(-angle)
+        #self.times.append(self.t)
 
         # On calcul l'erreur de position
         angle_error = - angle
@@ -143,15 +161,20 @@ class PID(Node):
         elif Kd < -7:
             Kd = -7
 
-
         # On calcul l'intégrale (pas testé)
-        self.integ_err += angle_error
+        if not self.reverse:
+            self.integ_err += angle_error #- self.pos_err_1000
+
+        #if self.i < 1000:
+        #    self.i += 1
+        #else:
+        #    self.pos_err_1000 = angle_error
 
         # On calcul la sortie, avec le PID (pour l'instant PD)
         steering_angle = self.P * angle_error + Kd + self.I * self.integ_err
-        self.Ps.append(self.P * angle_error)
-        self.Ds.append(Kd)
-        self.Is.append(self.I * self.integ_err)
+        #self.Ps.append(self.P * angle_error)
+        #self.Ds.append(Kd)
+        #self.Is.append(self.I * self.integ_err)
 
         return steering_angle
 
@@ -166,7 +189,7 @@ class PID(Node):
         
         # L'angle du gouvernail est initialement à 0
         angle = 0.0
-        # L'angle max du gouvernail est de pi/4 et -pi/4
+        # L'angle max du gouvernail est de pi/4 à -pi/4
         turn_limit = 0.78539816339
 
         try:
@@ -175,15 +198,27 @@ class PID(Node):
                 # On incrémente t pour l'affichage des données à la fin (debug)
                 self.t += 1
 
-                # Si on est suffisament proche de l'arrivé, on s'arrête
-                #print(norm(vectsub(self.pos, self.coord_objectif)))
-                print(self.coord_objectif)
+                #print("(%s, %s)" % (self.coord_objectif[0], self.coord_objectif[1])) 
                 if norm(vectsub(self.pos, self.coord_objectif)) < self.eps_arrived or self.coord_objectif == (0.,0.):
+                    # Si on est suffisament proche de l'arrivé ou qu'on recoit le vecteur nul, on s'arrête
                     speed = 0.0
                 else:
-                    speed = 12000.0
-                    # On récupère l'angle du gouvernail
-                    angle = self.new_get_steering_angle()
+                    # Si l'objectif est derrière
+                    if self.reverse:                
+                        # on recule
+                        self.orientation = self.orientation + pi
+                        if self.orientation > pi:
+                            self.orientation -= 2 * pi
+                        elif self.orientation < -pi:
+                            self.orientation += 2 * pi
+    
+                        angle = -self.new_get_steering_angle()
+                        speed = -12000.0
+                    # sinon on avance
+                    else:
+                        speed = 12000.0
+                        # On récupère l'angle du gouvernail
+                        angle = self.new_get_steering_angle()    
 
                 # On borne l'angle possible
                 if angle < -turn_limit:
@@ -192,7 +227,6 @@ class PID(Node):
                     angle = turn_limit
 
                 # On met les donnés en forme pour publish
-                self.turn.append(angle)
                 speed_msg = Float64()
                 angle_msg = Float64()
                 speed_msg.data = speed
@@ -213,14 +247,6 @@ class PID(Node):
             print(e)
 
         finally:
-            # On affiche l'angle du bateau par rapport au vecteur qui pointe vers les coordonnées objectif, en fonction du temps
-            plt.plot(self.Ds, self.times, color='g')
-            plt.plot(self.Is, self.times, color='b')
-            plt.plot(self.Ps, self.times, color='r')
-            plt.plot(self.angles, self.times, color='y')
-
-            plt.show()
-
             # l'idée ici c'est que si le progamme s'arrête, on demande à ce que le bateau s'arrête
             # Mais ca marche pas
             msg = Float64()
