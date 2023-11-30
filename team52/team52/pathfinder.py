@@ -58,7 +58,10 @@ class PathFinder(Node):
 
         self.goal = (0.0, 0.0)
         self.pos = (0.0, 0.0)
+        self.beacon = (0.0, 0.0)
+        self.enemy = (0.0, 0.0)
         self.obstacles = []
+        self.allies = []
         self.no_obstacle = False
         self.got_gps = False
         self.got_goal = False
@@ -70,6 +73,9 @@ class PathFinder(Node):
         self.gps = self.create_subscription(NavSatFix, '/wamv/sensors/gps/gps/fix', self.gps_gatherer, 10)
         self.sub_goal = self.create_subscription(NavSatFix, '/team52/goal', self.goal_callback, 10) # subscriber to get the coord to go to
         self.sub_obstacles = self.create_subscription(Obstacles, "/team52/obstacles", self.obstacles_callback, 10) # subsciber to get the list of coord of obstacles to avoid
+        self.sub_allies = self.create_subscription(Obstacles, '/team52/boat_obstacles', self.allies_callback, 10)
+        self.sub_beacon = self.create_subscription(NavSatFix, '/team52/beacon', self.beacon_callback, 10)
+        self.sub_enemy = self.create_subscription(NavSatFix, '/team52/lidar_enemy',self.enemy_callback, 10)
 
         # publishers #
         self.pub_waypoint = self.create_publisher(NavSatFix, '/team52/waypoint', 10)
@@ -87,6 +93,20 @@ class PathFinder(Node):
     def goal_callback(self, msg):
         self.goal = (msg.longitude, msg.latitude)
         self.got_goal = True
+
+    def beacon_callback(self, msg):
+        self.beacon = (msg.longitude, msg.latitude)
+    
+    def enemy_callback(self, msg):
+        self.enemy = (msg.longitude, msg.latitude)
+        print("enemy : (%s, %s)" % (self.enemy[0], self.enemy[1]))
+
+    def allies_callback(self, msg):
+        self.allies = []
+        # On traduit le msg pour simplicité #
+        for i in range(len(msg.gps_list)):
+            # On récupère les nouveaux points #
+            self.allies.append((msg.gps_list[i].longitude, msg.gps_list[i].latitude))
 
     # function qui garde les obstacles si les nouveaux points ne sont pas très loins de ce que l'on a avant, en éspérant que ca stabilise tout ca
     def merge_obst(self, lst):
@@ -191,6 +211,9 @@ class PathFinder(Node):
 
         # On fusionne avec les points qu'on avait déjà #
         self.merge_obst(lst)
+
+        # On ajoute les bateaux #
+        self.obstacles = self.obstacles + self.allies
 
         # On regarde si un obstacle est sur le chemin #
         self.waypoint, i = self.get_shortest_dist(self.goal)
