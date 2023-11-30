@@ -143,15 +143,15 @@ class LidarConverter(Node):
     def converter(self, point_mat: PointCloud2):
         # > Processing points < #
         object_point = []
-        # Selecting only 4 layers #
-        for h in range(6,10):
+        # Selecting only 6 layers #
+        for h in range(4,10):
             # Selecting only 1 point out of 20 #
             for w in range(0, point_mat.width, 20):
                 offset = w*point_mat.point_step + h*point_mat.row_step
                 point = get_point(point_mat.data, offset)
                 self.vertical_correction(point)
                 # If match the 'object' description -> add to the list #
-                if 15 < math.sqrt(point[0]**2+point[1]**2) < 600 and point[2] > -0.25:
+                if 10 < math.sqrt(point[0]**2+point[1]**2) < 600 and point[2] > -0.2:
                     self.horizontal_correction(point)
                     object_point.append(point)
                     object_point[-1].append([0,0])

@@ -33,6 +33,7 @@ setup(
             'pathfinder = team52.pathfinder:main',
             'brain = team52.brain:main',
             'camera = team52.camera:main',
+            'enemy_detection = team52.enemy_detection:main',
         ],
     },
 )

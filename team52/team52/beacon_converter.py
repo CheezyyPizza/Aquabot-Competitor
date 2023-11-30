@@ -49,12 +49,12 @@ class Converter(Node):
             ParamVec,
             '/wamv/sensors/acoustics/receiver/range_bearing',
             self.get_beacon_gps,
-            10
+            2
         )
         self.beacon_publisher = self.create_publisher(
             NavSatFix,
             '/team52/beacon',
-            10
+            2
         )
 
         # Service #

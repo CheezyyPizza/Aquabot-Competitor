@@ -51,5 +51,11 @@ def generate_launch_description():
         executable="pathfinder",
     )
     ld.add_action(pathfinder_node)
+    
+    enemy_node = Node(
+        package="team52",
+        executable="enemy_detection",
+    )
+    ld.add_action(enemy_node)
 
     return ld
