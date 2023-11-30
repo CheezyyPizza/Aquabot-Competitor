@@ -112,8 +112,8 @@ class LidarConverter(Node):
         )
 
         # Publishers #
-        self.boat_publisher = self.create_publisher(Obstacles, "/team52/boats", 10)
-        self.obs_publisher = self.create_publisher(Obstacles, "/team52/obstacles", 10)
+        self.boat_publisher = self.create_publisher(Obstacles, "/team52/boats", 2)
+        self.obs_publisher = self.create_publisher(Obstacles, "/team52/obstacles", 2)
 
         # Service #
         self.client_gps_converter = GPSConverter()

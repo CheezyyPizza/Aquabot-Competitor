@@ -146,7 +146,7 @@ class Filter(Node):
     def compare(self, lidar_coord: Obstacles):
         for ais in lidar_coord.gps_list:
             distance = self.get_distance_min(ais)
-            if distance > 10:
+            if distance > 20:
                 self.lidar_enemy_publisher.publish(ais)
                 return
         
