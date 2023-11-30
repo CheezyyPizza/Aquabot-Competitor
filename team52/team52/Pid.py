@@ -55,8 +55,8 @@ class PID(Node):
         self.pos            = (0.0, 0.0)                          # Vecteur de la position actuelle
         self.orientation    = 0.0                                 # Vecteur de l'orientation du bateau
         self.coord_objectif = (0.0, 0.0)                          # Vecteur de la position de l'objectif
-        self.eps_obj        = 0                                   # Valeur petite pour laquelle on considère que les coordonnées d'objectif ont changées
-        self.eps_arrived    = 0.0002                             # Valeur petite pour laquelle on condidère qu'on est assez proche de l'arrivé pour être arrivé (environ 5 mètre à Paris)
+        self.eps_obj        = 0.00002                             # Valeur petite pour laquelle on considère que les coordonnées d'objectif ont changées
+        self.eps_arrived    = 0.00025                             # Valeur petite pour laquelle on condidère qu'on est assez proche de l'arrivé pour être arrivé (environ 5 mètre à Paris)
                                   
         self.olderr         = 0.0                                 # Valeur de l'erreur au pas précédent, pour le calcul de la dérivée
         self.integ_err      = 0.0                                 # Valeur de l'erreur d'integrale
@@ -177,7 +177,8 @@ class PID(Node):
 
                 # Si on est suffisament proche de l'arrivé, on s'arrête
                 #print(norm(vectsub(self.pos, self.coord_objectif)))
-                if norm(vectsub(self.pos, self.coord_objectif)) < self.eps_arrived or self.coord_objectif == (0.0,0.0):
+                print(self.coord_objectif)
+                if norm(vectsub(self.pos, self.coord_objectif)) < self.eps_arrived or self.coord_objectif == (0.,0.):
                     speed = 0.0
                 else:
                     speed = 12000.0

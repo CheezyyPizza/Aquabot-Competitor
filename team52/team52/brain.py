@@ -26,8 +26,8 @@ class Brain(Node):
         )
         self.lidar_enemy_subs = self.create_subscription(
             NavSatFix,
-            "/team52/lidar_enemy",
-            self.get_lidar_enemy,
+            "/team52/enemy",
+            self.get_enemy,
             10
         )
 
@@ -43,7 +43,7 @@ class Brain(Node):
             10
         )
 
-    def get_lidar_enemy(self, gps: NavSatFix):
+    def get_enemy(self, gps: NavSatFix):
         if self.phase == 2:
             position = PoseStamped()
             position.pose.position.y = gps.longitude
