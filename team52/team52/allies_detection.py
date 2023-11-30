@@ -79,7 +79,7 @@ class Filter(Node):
         # > Publishers < #
         self.lidar_enemy_publisher = self.create_publisher(
             NavSatFix,
-            '/team52/lidar_enemy',
+            '/team52/enemy_lidar',
             10
         )
         self.boat_obs_publisher = self.create_publisher(
