@@ -143,8 +143,8 @@ class LidarConverter(Node):
     def converter(self, point_mat: PointCloud2):
         # > Processing points < #
         object_point = []
-        # Selecting only 6 layers #
-        for h in range(4,10):
+        # Selecting only 4 layers #
+        for h in range(6,10):
             # Selecting only 1 point out of 20 #
             for w in range(0, point_mat.width, 20):
                 offset = w*point_mat.point_step + h*point_mat.row_step
@@ -165,7 +165,7 @@ class LidarConverter(Node):
             gr_num = 0
             object_point.sort(key=lambda x: x[coord])
             for i in range(1, len(object_point)):
-                if abs(object_point[i][coord]-object_point[i-1][coord]) > 10:
+                if abs(object_point[i][coord]-object_point[i-1][coord]) > 20:
                     gr_num += 1
                 object_point[i][3][coord] = gr_num
 
@@ -184,9 +184,10 @@ class LidarConverter(Node):
             # Get max height #
             group.sort(key=lambda x: x[2])
             # If too short -> Boat #
-            if group[-1][2] < 0.6:
+            if group[-1][2] < 1:
                 point = average_point(group)
-                if math.sqrt(point.x**2+point.y**2) < 150:
+                print(point.x, point.y)
+                if math.sqrt(point.x**2+point.y**2) < 100:
                     boats.append(self.client_gps_converter.send_request(point))
             # Else -> Obstacle #
             else:
@@ -202,6 +203,9 @@ class LidarConverter(Node):
                 # Print result #
                 i,j,d = max_distance
                 # First point #
+                print("Obstacle")
+                print(group[i])
+                print(group[j])
                 response = self.client_gps_converter.send_request(list_to_point(group[i]))
                 obstacles.append(response)
                 # Second point #

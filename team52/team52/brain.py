@@ -28,7 +28,7 @@ class Brain(Node):
             NavSatFix,
             "/team52/enemy",
             self.get_enemy,
-            10
+            1
         )
 
         # > Publishers < #
