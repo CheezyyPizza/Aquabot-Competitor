@@ -210,21 +210,11 @@ class PathFinder(Node):
             # On demande a s'éloigner de 5m de la balise #
             self.goal = vectadd(self.pos, scalar(0.0002 / norm(vectsub(self.pos, self.beacon)), vectsub(self.pos, self.beacon))) 
 
-        # cette variable doit être ajouter car si l'ennemi n'est plus detecté, le topic n'est pas mis a jour et garde l'ancienne pos, qui pourrait bloquer le bateau si il en est trop proche
-        self.enemy_decay -= 1
-        # Si l'info sur la pos ennemi est récente #
-        if self.enemy_decay > 0:
-            norm_enem = norm(vectsub(self.pos, self.enemy))
-            ###self.get_logger().info("\ndist to enem = %s" % norm_enem)
-            # Si on est a moins de 30m de l'ennemi #
-            if norm_enem < 0.0012:
-                # Si on est à moins de 20m de l'ennemi #
-                if norm_enem < 0.0008:
-                    # on fait demi-tour #
-                    self.goal = vectadd(self.pos, scalar(0.0004 / norm_enem, vectsub(self.pos, self.enemy))) 
-                # Sinon on s'arrête juste #
-                #else:
-                #    self.goal = (0.0, 0.0)
+        norm_enem = norm(vectsub(self.pos, self.enemy))
+        ###self.get_logger().info("\ndist to enem = %s" % norm_enem)
+        # Si on est a moins de 30m de l'ennemi #
+        if norm_enem < 0.0012:
+            self.goal = vectadd(self.pos, scalar(0.0004 / norm_enem, vectsub(self.pos, self.enemy))) 
 
         # On traduit le msg pour simplicité #
         lst = []
