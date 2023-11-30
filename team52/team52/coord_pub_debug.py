@@ -18,10 +18,10 @@ class CoordPublisher(Node):
         super().__init__('coord_publisher')
 
         self.msg = NavSatFix()
-        self.msg.longitude = -4.97
-        self.msg.latitude = 48.04331299831134
+        self.msg.longitude = -4.985
+        self.msg.latitude = 48.04631299831134
 
-        self.publisher = self.create_publisher(NavSatFix, 'team52/goal', 10)
+        self.publisher = self.create_publisher(NavSatFix, '/team52/goal', 10)
         wait_for_change = 30
         self.change_time = self.create_timer(wait_for_change, self.change_callback)
         timer_period = 0.5  # seconds
@@ -31,8 +31,8 @@ class CoordPublisher(Node):
         self.run()
 
     def change_callback(self):
-        self.msg.longitude = -4.985
-        self.msg.latitude = 48.04551299831134
+        self.msg.longitude = -4.970
+        self.msg.latitude = 48.04631299831134
         self.get_logger().info("changed coord")
 
     def timer_callback(self):

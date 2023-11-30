@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from team52_interfaces.msg import Obstacles
 from sensor_msgs.msg import NavSatFix
-from geometry_msgs.msg import PoseArray
+from std_msgs.msg import Float32
 
 
 from math import sqrt
@@ -58,7 +58,11 @@ class PathFinder(Node):
 
         self.goal = (0.0, 0.0)
         self.pos = (0.0, 0.0)
+        self.beacon = (0.0, 0.0)
+        self.enemy = (0.0, 0.0)
+        self.enemy_decay = 5 # pour savoir si on ne voit plus l'ennemi
         self.obstacles = []
+        self.allies = []
         self.no_obstacle = False
         self.got_gps = False
         self.got_goal = False
@@ -70,13 +74,14 @@ class PathFinder(Node):
         self.gps = self.create_subscription(NavSatFix, '/wamv/sensors/gps/gps/fix', self.gps_gatherer, 10)
         self.sub_goal = self.create_subscription(NavSatFix, '/team52/goal', self.goal_callback, 10) # subscriber to get the coord to go to
         self.sub_obstacles = self.create_subscription(Obstacles, "/team52/obstacles", self.obstacles_callback, 10) # subsciber to get the list of coord of obstacles to avoid
+        self.sub_allies = self.create_subscription(Obstacles, '/team52/boat_obstacles', self.allies_callback, 10)
+        self.sub_beacon = self.create_subscription(NavSatFix, '/team52/beacon', self.beacon_callback, 10)
+        self.sub_enemy = self.create_subscription(NavSatFix, '/team52/lidar_enemy',self.enemy_callback, 10)
 
         # publishers #
         self.pub_waypoint = self.create_publisher(NavSatFix, '/team52/waypoint', 10)
 
-        self.get_logger().info("running")
-
-        self.run()
+        self.get_logger().info("Running")
  
     # get position #
     def gps_gatherer(self, msg):
@@ -87,6 +92,21 @@ class PathFinder(Node):
     def goal_callback(self, msg):
         self.goal = (msg.longitude, msg.latitude)
         self.got_goal = True
+
+    def beacon_callback(self, msg):
+        self.beacon = (msg.longitude, msg.latitude)
+    
+    def enemy_callback(self, msg):
+        self.enemy = (msg.longitude, msg.latitude)
+        self.enemy_decay = 5
+        self.get_logger().info("\nfound enemy !")
+
+    def allies_callback(self, msg):
+        self.allies = []
+        # On traduit le msg pour simplicité #
+        for i in range(len(msg.gps_list)):
+            # On récupère les nouveaux points #
+            self.allies.append((msg.gps_list[i].longitude, msg.gps_list[i].latitude))
 
     # function qui garde les obstacles si les nouveaux points ne sont pas très loins de ce que l'on a avant, en éspérant que ca stabilise tout ca
     def merge_obst(self, lst):
@@ -169,10 +189,10 @@ class PathFinder(Node):
                 
                 # On renvoie la plus petite des deux #
                 if dist1 < dist2:
-                    print("1 < 2")
-                    return way1 , i
+                    ###print("1 < 2")
+                    return way1, i
                 else:
-                    print("2 < 1")
+                    ###print("2 < 1")
                     return way2, i
                 
         # Si on arrive ici, aucun obstacle est sur le chemin, le waypoint c'est l'objectif donné
@@ -183,6 +203,19 @@ class PathFinder(Node):
     def obstacles_callback(self, msg):
         if (not self.got_gps) or (not self.got_goal):
             return
+        
+        ###self.get_logger().info("\ndist to beac = %s" % norm(vectsub(self.pos, self.beacon)))
+        # Si on est a moins de 5m du beacon #
+        if norm(vectsub(self.pos, self.beacon)) < 0.0002: 
+            # On demande a s'éloigner de 5m de la balise #
+            self.goal = vectadd(self.pos, scalar(0.0002 / norm(vectsub(self.pos, self.beacon)), vectsub(self.pos, self.beacon))) 
+
+        norm_enem = norm(vectsub(self.pos, self.enemy))
+        ###self.get_logger().info("\ndist to enem = %s" % norm_enem)
+        # Si on est a moins de 30m de l'ennemi #
+        if norm_enem < 0.0012:
+            self.goal = vectadd(self.pos, scalar(0.0004 / norm_enem, vectsub(self.pos, self.enemy))) 
+
         # On traduit le msg pour simplicité #
         lst = []
         for i in range(len(msg.gps_list)):
@@ -192,11 +225,21 @@ class PathFinder(Node):
         # On fusionne avec les points qu'on avait déjà #
         self.merge_obst(lst)
 
+        # On ajoute les bateaux #
+        self.obstacles = self.obstacles + self.allies
+        if self.goal == (0.0, 0.0):
+            ###self.get_logger().info("\nstop moving")
+            # si on arrive ici c'est qu'on ne veut pas bouger #
+            waypoint_msg = NavSatFix()
+            waypoint_msg.longitude = self.goal[0]
+            waypoint_msg.latitude = self.goal[1]
+            self.pub_waypoint.publish(waypoint_msg)
+            return # on return pour pas faire le reste, qui pourrait demander au bateau de bouger alors qu'il doit rester immobile #
+        
         # On regarde si un obstacle est sur le chemin #
         self.waypoint, i = self.get_shortest_dist(self.goal)
         
         # Si il y a un obstacle -> on reregarde avec comme obj le waypoint (au cas ou un obstacle est sur la nouvelle traj) #
-        # ----->> possiblement ca qu'il kiffe pas, mais je me suis dit que c'est risquer d'assumer qu'il ne peut pas y avoir un obstacle sur la nouvelle traj
         if not self.no_obstacle :
             self.waypoint, i = self.get_shortest_dist(self.waypoint)
             self.no_obstacle = True
@@ -204,8 +247,8 @@ class PathFinder(Node):
         # Une fois sortie de la boucle, on a trouvé le waypoint le plus imminent #
         self.no_obstacle = False
 
-        ###print("pos = (%s, %s)" %(self.pos[0], self.pos[1]))
-        ###print("waypoint = (%s, %s)" %(self.waypoint[0], self.waypoint[1]))
+        ###self.get_logger().info("\nwaypoint = (%s, %s)\npos      = (%s, %s)" % (self.waypoint[0], self.waypoint[1], self.pos[0], self.pos[1]))
+
 
         self.waypoints_x.append(self.waypoint[0])
         self.waypoints_y.append(self.waypoint[1])
@@ -215,18 +258,6 @@ class PathFinder(Node):
         waypoint_msg.latitude = self.waypoint[1]
         self.pub_waypoint.publish(waypoint_msg)
 
-    def run(self):
-        try:
-            while rclpy.ok():
-                # revient a juste spin mais bon flemme de changer
-                rclpy.spin_once(self)
-        except Exception as e:
-            print(e)
-        finally:
-            fig, ax = plt.subplots()
-            ax.scatter(self.waypoints_x, self.waypoints_y)
-            plt.show()
-
         
 
 
@@ -234,7 +265,7 @@ def main(args=None):
     rclpy.init(args=args)
     
     pathfind = PathFinder()
-    
+    rclpy.spin(pathfind)
 
     pathfind.destroy_node()
     rclpy.shutdown()
