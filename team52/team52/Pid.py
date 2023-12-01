@@ -36,14 +36,6 @@ class PID(Node):
     def __init__(self):
         super().__init__("pid")
 
-        # Initialisation des tableaux pour la visualisation à la fin (debug)
-        self.angles = []
-        self.turn   = []
-        self.times  = []
-        self.Ps     = []
-        self.Ds     = []
-        self.Is     = []
-
         # initialisation des variables
 
         # ------ Variables du PID, c'est celle-là qu'il faut modifier pour changer la réponse du bateau -------
@@ -65,7 +57,7 @@ class PID(Node):
         self.t              = 0                                   # Valeur pour l'affichage à la fin (debug)
         self.i              = 0
 
-        self.reverse    = True
+        self.reverse        = True
 
 
         # initialisation des publisher pour les mouvements du bateau
@@ -136,10 +128,6 @@ class PID(Node):
             angle -= 2 * pi
         elif angle < -pi:
             angle += 2 * pi
-            
-        # On append pour l'affichage à la fin (debug)
-        #self.angles.append(-angle)
-        #self.times.append(self.t)
 
         # On calcul l'erreur de position
         angle_error = - angle
@@ -161,20 +149,12 @@ class PID(Node):
         elif Kd < -7:
             Kd = -7
 
-        # On calcul l'intégrale (pas testé)
+        # On calcul l'intégrale
         if not self.reverse:
-            self.integ_err += angle_error #- self.pos_err_1000
+            self.integ_err += angle_error 
 
-        #if self.i < 1000:
-        #    self.i += 1
-        #else:
-        #    self.pos_err_1000 = angle_error
-
-        # On calcul la sortie, avec le PID (pour l'instant PD)
+        # On calcul la sortie, avec le PID
         steering_angle = self.P * angle_error + Kd + self.I * self.integ_err
-        #self.Ps.append(self.P * angle_error)
-        #self.Ds.append(Kd)
-        #self.Is.append(self.I * self.integ_err)
 
         return steering_angle
 
@@ -195,10 +175,6 @@ class PID(Node):
         try:
             self.get_logger().info("running")
             while rclpy.ok():
-                # On incrémente t pour l'affichage des données à la fin (debug)
-                self.t += 1
-
-                #print("(%s, %s)" % (self.coord_objectif[0], self.coord_objectif[1])) 
                 if norm(vectsub(self.pos, self.coord_objectif)) < self.eps_arrived or self.coord_objectif == (0.,0.):
                     # Si on est suffisament proche de l'arrivé ou qu'on recoit le vecteur nul, on s'arrête
                     speed = 0.0
@@ -264,7 +240,6 @@ def main(args=None):
     rclpy.init(args=args)
     
     subscriber = PID()
-    #rclpy.spin(subscriber)
 
 
     subscriber.destroy_node()
