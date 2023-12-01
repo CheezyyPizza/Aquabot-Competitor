@@ -6,6 +6,7 @@ import math
 from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import Point
 from sensor_msgs.msg import NavSatFix
+from std_msgs.msg import UInt32
 from team52_interfaces.msg import Obstacles
 from team52_interfaces.srv import ConvertToCart
 from team52_interfaces.srv import BeaconToGPS
@@ -75,6 +76,14 @@ class Filter(Node):
             self.compare,
             10
         )
+        # --- Stage --- #
+        self.phase = 0
+        self.phase_subs = self.create_subscription(
+            UInt32,
+            '/vrx/patrolandfollow/current_phase',
+            self.get_phase,
+            10
+        )
 
         # > Publishers < #
         self.lidar_enemy_publisher = self.create_publisher(
@@ -91,6 +100,9 @@ class Filter(Node):
         # Service #
         self.client_gps_converter = GPSConverter()
         self.get_logger().info("Node ready")
+
+    def get_phase(self, phase):
+        self.phase = phase.data
 
     def get_beacon(self, gps: NavSatFix):
         self.beacon_ais = gps
@@ -117,17 +129,19 @@ class Filter(Node):
         # > Beacon < #
         new_ais.append(self.beacon_ais)
         # Set obstacles #
-        try:
-            cart = self.client_gps_converter.send_request_tocart(self.beacon_ais)
-            margin = 5
-            dist = get_distance(self.origin, cart)
-            angle = math.atan2(cart.y, cart.x)
-            delta_angle = 2*math.asin(margin/(2*dist))
-            # Set new points #
-            obstacles.append(self.client_gps_converter.send_request_beacontogps(dist, angle+delta_angle))
-            obstacles.append(self.client_gps_converter.send_request_beacontogps(dist, angle-delta_angle))
-        except:
-            pass
+        if self.phase > 1:
+            try:
+                cart = self.client_gps_converter.send_request_tocart(self.beacon_ais)
+                margin = 5
+                dist = get_distance(self.origin, cart)
+                angle = math.atan2(cart.y, cart.x)
+                delta_angle = 2*math.asin(margin/(2*dist))
+                # Set new points #
+                if self.phase > 1:
+                    obstacles.append(self.client_gps_converter.send_request_beacontogps(dist, angle+delta_angle))
+                    obstacles.append(self.client_gps_converter.send_request_beacontogps(dist, angle-delta_angle))
+            except:
+                pass
         # > Process results < #
         self.allies_ais = new_ais
         obstacles_msg = Obstacles()

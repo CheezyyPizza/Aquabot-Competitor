@@ -115,6 +115,9 @@ class EnemyDectector(Node):
             if angle > -5.:
                 camera_gps = self.gps_converter.send_request_beacontogps(50., angle)
                 print(angle)
+            elif angle < -50.:
+                camera_gps = self.gps_converter.send_request_beacontogps(5., angle)
+                print("ALERT !")
             else:
                 print("too close")
             if self.enemy_lidar.longitude == 0:
@@ -122,7 +125,7 @@ class EnemyDectector(Node):
                 print("Only cam")
             else:
                 print(angle_lidar, self.yaw, min(abs(angle_lidar-self.yaw),2*math.pi-abs(angle_lidar-self.yaw)))
-                if min(abs(angle_lidar-angle),2*math.pi-abs(angle_lidar-angle)) < math.radians(10):
+                if min(abs(angle_lidar-angle),2*math.pi-abs(angle_lidar-angle)) < math.radians(5):
                     result = self.enemy_lidar
                     print("Cam + lidar")
                 else:
