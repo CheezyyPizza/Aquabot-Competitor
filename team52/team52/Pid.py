@@ -48,14 +48,16 @@ class PID(Node):
         self.orientation    = 0.0                                 # Vecteur de l'orientation du bateau
         self.coord_objectif = (0.0, 0.0)                          # Vecteur de la position de l'objectif
         self.eps_obj        = 0.00002                             # Valeur petite pour laquelle on considère que les coordonnées d'objectif ont changées
-        self.eps_arrived    = 0.00025                             # Valeur petite pour laquelle on condidère qu'on est assez proche de l'arrivé pour être arrivé (environ 5 mètre à Paris)
-                                  
+        self.eps_arrived    = 0.00025                              # Valeur petite pour laquelle on condidère qu'on est assez proche de l'arrivé pour être arrivé (environ 5 mètre à Paris)
+        self.eps_emergency  = 0.0001
+
         self.olderr         = 0.0                                 # Valeur de l'erreur au pas précédent, pour le calcul de la dérivée
         self.integ_err      = 0.0                                 # Valeur de l'erreur d'integrale
         self.d_err          = 0.0                                 # Valeur de l'erreur de dérivée
         self.time           = self.get_clock().now().nanoseconds  # Temps pour calculer les dérivés
         self.t              = 0                                   # Valeur pour l'affichage à la fin (debug)
         self.i              = 0
+        self.turn_limit     = 0
 
         self.reverse        = True
 
@@ -98,11 +100,14 @@ class PID(Node):
         angle = obj_angle - self.orientation
         
         # si l'objectif est derrière et à moins de 5m #
-        if (angle > pi/2 or angle < -pi/2) and norm(vectsub(self.coord_objectif, self.pos)) < 0.0002: 
+        if (angle > pi/2 or angle < -pi/2) and norm(vectsub(self.coord_objectif, self.pos)) < 0.00005: 
             # on recule #
-            self.reverse = True
+            print("REVERSE ON")
+            #self.reverse = True
+            self.turn_limit = 0.78539816339
         else:
             # sinon on avance #
+            self.turn_limit = 0.78539816339/2
             self.reverse = False
 
         
@@ -164,19 +169,28 @@ class PID(Node):
         # Si on est déjà arrivé, on bouge pas, sinon on trace
         if norm(vectsub(self.pos, self.coord_objectif)) < self.eps_arrived:
             speed = 0.0
+        elif norm(vectsub(self.pos, self.coord_objectif)) < self.eps_arrived*1.5:
+            speed = 6000.0
         else:
             speed = 12000.0
         
         # L'angle du gouvernail est initialement à 0
         angle = 0.0
-        # L'angle max du gouvernail est de pi/4 à -pi/4
-        turn_limit = 0.78539816339
+
+        # L'angle max du gouvernail est de pi/4 et -pi/4
+        self.turn_limit = 0.78539816339/10
 
         try:
             self.get_logger().info("running")
             while rclpy.ok():
-                if norm(vectsub(self.pos, self.coord_objectif)) < self.eps_arrived or self.coord_objectif == (0.,0.):
+                # On incrémente t pour l'affichage des données à la fin (debug)
+                self.t += 1
+
+                #print("(%s, %s)" % (self.coord_objectif[0], self.coord_objectif[1])) 
+                print(norm(vectsub(self.pos, self.coord_objectif)))
+                if self.eps_emergency < norm(vectsub(self.pos, self.coord_objectif)) < self.eps_arrived or self.coord_objectif == (0.,0.):
                     # Si on est suffisament proche de l'arrivé ou qu'on recoit le vecteur nul, on s'arrête
+                    print("Close enough", norm(vectsub(self.pos, self.coord_objectif)))
                     speed = 0.0
                 else:
                     # Si l'objectif est derrière
@@ -192,15 +206,19 @@ class PID(Node):
                         speed = -12000.0
                     # sinon on avance
                     else:
-                        speed = 12000.0
+                        if self.eps_arrived < norm(vectsub(self.pos, self.coord_objectif)) < 1.5 * self.eps_arrived:
+                            speed = 3000.0
+                        else:
+                            speed = 12000.0
                         # On récupère l'angle du gouvernail
-                        angle = self.new_get_steering_angle()    
+                        angle = self.new_get_steering_angle()
+                        print(angle, self.turn_limit)
 
                 # On borne l'angle possible
-                if angle < -turn_limit:
-                    angle = -turn_limit
-                elif angle > turn_limit:
-                    angle = turn_limit
+                if angle < -self.turn_limit:
+                    angle = -self.turn_limit
+                elif angle > self.turn_limit:
+                    angle = self.turn_limit
 
                 # On met les donnés en forme pour publish
                 speed_msg = Float64()

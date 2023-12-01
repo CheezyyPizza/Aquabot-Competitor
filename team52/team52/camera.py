@@ -53,6 +53,8 @@ class Camera(Node):
             print(max_red)
             if max_red >= 200:
                 angle.data = -10.
+            if max_red >= 220:
+                angle.data = -100.
         self.angle_pubs.publish(angle)
 
 def main():

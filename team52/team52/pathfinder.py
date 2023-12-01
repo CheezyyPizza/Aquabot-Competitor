@@ -69,9 +69,9 @@ class PathFinder(Node):
         self.gps           = self.create_subscription(NavSatFix, '/wamv/sensors/gps/gps/fix', self.gps_gatherer, 10)
         self.sub_goal      = self.create_subscription(NavSatFix, '/team52/goal', self.goal_callback, 10) # subscriber to get the coord to go to
         self.sub_obstacles = self.create_subscription(Obstacles, "/team52/obstacles", self.obstacles_callback, 10) # subsciber to get the list of coord of obstacles to avoid
-        self.sub_allies    = self.create_subscription(Obstacles, '/team52/boat_obstacles', self.allies_callback, 10)
-        self.sub_beacon    = self.create_subscription(NavSatFix, '/team52/beacon', self.beacon_callback, 10)
-        self.sub_enemy     = self.create_subscription(NavSatFix, '/team52/lidar_enemy',self.enemy_callback, 10)
+        self.sub_allies = self.create_subscription(Obstacles, '/team52/boat_obstacles', self.allies_callback, 10)
+        self.sub_beacon = self.create_subscription(NavSatFix, '/team52/beacon', self.beacon_callback, 10)
+        self.sub_enemy = self.create_subscription(NavSatFix, '/team52/enemy',self.enemy_callback, 10)
 
         # publishers #
         self.pub_waypoint = self.create_publisher(NavSatFix, '/team52/waypoint', 10)
@@ -198,12 +198,15 @@ class PathFinder(Node):
         # Si on est a moins de 5m du beacon #
         if norm(vectsub(self.pos, self.beacon)) < 0.0002: 
             # On demande a s'éloigner de 5m de la balise #
-            self.goal = vectadd(self.pos, scalar(0.0002 / norm(vectsub(self.pos, self.beacon)), vectsub(self.pos, self.beacon))) 
+            self.goal = vectadd(self.pos, scalar(0.00007 / norm(vectsub(self.pos, self.beacon)), vectsub(self.pos, self.beacon))) 
 
         norm_enem = norm(vectsub(self.pos, self.enemy))
+        print(self.enemy, norm_enem)
+        ###self.get_logger().info("\ndist to enem = %s" % norm_enem)
         # Si on est a moins de 30m de l'ennemi #
-        if norm_enem < 0.0012:
-            self.goal = vectadd(self.pos, scalar(0.0004 / norm_enem, vectsub(self.pos, self.enemy))) 
+        if norm_enem < 0.00015:
+            print("DEMI TOUR !!!!")
+            self.goal = vectadd(self.pos, scalar(0.00007/norm_enem, vectsub(self.pos, self.enemy)))
 
         # On traduit le msg pour simplicité #
         lst = []

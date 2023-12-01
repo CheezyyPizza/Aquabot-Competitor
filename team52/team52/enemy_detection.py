@@ -76,7 +76,7 @@ class EnemyDectector(Node):
         self.enemy_pub = self.create_publisher(
             NavSatFix,
             '/team52/enemy',
-            10
+            1
         )
 
         # > Client < #
@@ -100,27 +100,42 @@ class EnemyDectector(Node):
         enemy_cart = self.gps_converter.send_request_tocart(self.enemy_lidar)
         angle_lidar = math.atan2(enemy_cart.y, enemy_cart.x)
 
+        result = NavSatFix()
+
         if angle > 5.:
-            if self.enemy_lidar.longitude == 0:
-                self.enemy_pub.publish(NavSatFix())
-            else:
+            if self.enemy_lidar.longitude != 0:
                 if abs(angle_lidar-self.yaw) < fov/2:
+                    print("No boat")
                     self.enemy_lidar = NavSatFix()
-                    self.enemy_pub.publish(NavSatFix())
                 else:
-                    self.enemy_pub.publish(self.enemy_lidar)
+                    print("Blind boat")
+                    result = self.enemy_lidar
         else:
             camera_gps = NavSatFix()
             if angle > -5.:
                 camera_gps = self.gps_converter.send_request_beacontogps(50., angle)
-            if self.enemy_lidar.longitude == 0:
-                self.enemy_pub.publish(camera_gps)
+                print(angle)
+            elif angle < -50.:
+                camera_gps = self.gps_converter.send_request_beacontogps(5., angle)
+                print("ALERT !")
             else:
-                if abs(angle_lidar-angle) < math.radians(5):
-                    self.enemy_pub.publish(self.enemy_lidar)
+                print("too close")
+            if self.enemy_lidar.longitude == 0:
+                result = camera_gps
+                print("Only cam")
+            else:
+                print(angle_lidar, self.yaw, min(abs(angle_lidar-self.yaw),2*math.pi-abs(angle_lidar-self.yaw)))
+                if min(abs(angle_lidar-angle),2*math.pi-abs(angle_lidar-angle)) < math.radians(5):
+                    result = self.enemy_lidar
+                    print("Cam + lidar")
                 else:
                     self.enemy_lidar = NavSatFix()
-                    self.enemy_pub.publish(camera_gps)
+                    result = camera_gps
+                    print("Cam")
+        
+        cart = self.gps_converter.send_request_tocart(result)
+        print("X:{0:4f} Y:{1:4f}\n\tE:{2:8f} N:{3:8f}".format(cart.x, cart.y, result.longitude, result.latitude))
+        self.enemy_pub.publish(result)
 
             
     def get_lidar(self, gps):
